@@ -1,0 +1,8 @@
+{
+    "go.gopath": "/root/docker-self",
+    "go.toolsGopath": "/root/go",
+    "go.toolsEnvVars": {
+        "GO111MODULE": "auto"
+    },
+    "editor.links": false
+}
