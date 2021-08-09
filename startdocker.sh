@@ -1,0 +1,3 @@
+#! /bin/bash
+systemctl start docker
+systemctl start docker.socket
