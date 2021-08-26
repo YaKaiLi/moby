@@ -50,6 +50,7 @@ func newPuller(endpoint registry.APIEndpoint, repoInfo *registry.RepositoryInfo,
 // Pull initiates a pull operation. image is the repository name to pull, and
 // tag may be either empty, or indicate a specific tag to pull.
 func Pull(ctx context.Context, ref reference.Named, imagePullConfig *ImagePullConfig, local ContentStore) error {
+	logrus.Infof("INFO: 开始PULL函数了！！")
 	// Resolve the Repository name from fqn to RepositoryInfo
 	repoInfo, err := imagePullConfig.RegistryService.ResolveRepository(ref)
 	if err != nil {
@@ -104,6 +105,8 @@ func Pull(ctx context.Context, ref reference.Named, imagePullConfig *ImagePullCo
 				continue
 			}
 		}
+		logrus.Infof("INFO: 我会进这个循环吗？？？")
+		logrus.Infof("Trying to pull %s from %s %s", reference.FamiliarName(repoInfo.Name), endpoint.URL, endpoint.Version)
 
 		logrus.Debugf("Trying to pull %s from %s %s", reference.FamiliarName(repoInfo.Name), endpoint.URL, endpoint.Version)
 
@@ -149,12 +152,14 @@ func Pull(ctx context.Context, ref reference.Named, imagePullConfig *ImagePullCo
 		}
 
 		imagePullConfig.ImageEventLogger(reference.FamiliarString(ref), reference.FamiliarName(repoInfo.Name), "pull")
+		logrus.Infof("INFO: 在for endpoint处，结束PULL函数了！！") //运行正常的话会在此返回。
 		return nil
 	}
 
 	if lastErr == nil {
 		lastErr = fmt.Errorf("no endpoints found for %s", reference.FamiliarString(ref))
 	}
+	logrus.Infof("INFO: 在函数结尾结束PULL函数了！！")
 
 	return TranslatePullError(lastErr, ref)
 }

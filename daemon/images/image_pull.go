@@ -26,15 +26,16 @@ import (
 // PullImage initiates a pull operation. image is the repository name to pull, and
 // tag may be either empty, or indicate a specific tag to pull.
 func (i *ImageService) PullImage(ctx context.Context, image, tag string, platform *specs.Platform, metaHeaders map[string][]string, authConfig *types.AuthConfig, outStream io.Writer) error {
-	logrus.Infof("INFO: start pull images with tag: %s", tag)
+	logrus.Infof("INFO: start pull images with image name: %v", image) //获取镜像名称
+	logrus.Infof("INFO: start pull images with tag: %v", tag)
 	start := time.Now()
 	// Special case: "pull -a" may send an image name with a
 	// trailing :. This is ugly, but let's not break API
 	// compatibility.
-	image = strings.TrimSuffix(image, ":")
+	image = strings.TrimSuffix(image, ":") //分割镜像名称，只获取：之前的
 
 	ref, err := reference.ParseNormalizedNamed(image)
-	if err != nil {
+	if err != nil { //err不等于空，即有错误
 		return errdefs.InvalidParameter(err)
 	}
 
@@ -51,12 +52,16 @@ func (i *ImageService) PullImage(ctx context.Context, image, tag string, platfor
 			return errdefs.InvalidParameter(err)
 		}
 	}
+	// logrus.Infof("INFO: over digest the tag")
 
 	err = i.pullImageWithReference(ctx, ref, platform, metaHeaders, authConfig, outStream)
 	imageActions.WithValues("pull").UpdateSince(start)
 	if err != nil {
 		return err
 	}
+	logrus.Infof("INFO: over pullImageWithReference")
+
+	// logrus.Infof("INFO: what's the platform? : %t", (platform != nil))
 
 	if platform != nil {
 		// If --platform was specified, check that the image we pulled matches
@@ -75,11 +80,17 @@ func (i *ImageService) PullImage(ctx context.Context, image, tag string, platfor
 			logrus.WithError(err).WithField("image", image).Warn("ignoring platform mismatch on single-arch image")
 		}
 	}
+	// logrus.Infof("INFO: over for the platform")
 
 	return nil
 }
 
 func (i *ImageService) pullImageWithReference(ctx context.Context, ref reference.Named, platform *specs.Platform, metaHeaders map[string][]string, authConfig *types.AuthConfig, outStream io.Writer) error {
+	logrus.Infof("INFO: I'm in the function pullImageWithReference!!!")
+	// ref变量解释：
+	// 值示例：docker.io/library/alpine:latest，
+	//
+
 	// Include a buffer so that slow client connections don't affect
 	// transfer performance.
 	progressChan := make(chan progress.Progress, 100)
@@ -124,11 +135,15 @@ func (i *ImageService) pullImageWithReference(ctx context.Context, ref reference
 			ReferenceStore:   i.referenceStore,
 		},
 		DownloadManager: i.downloadManager,
-		Schema2Types:    distribution.ImageTypes,
+		Schema2Types:    distribution.ImageTypes, //只有ta是字符串
 		Platform:        platform,
 	}
+	logrus.Infof("INFO: just want output imagePullConfig!!! :%+v", imagePullConfig)
+	logrus.Infof("INFO: just want output ImageConfigStore!!! :%+v", imageStore.ImageConfigStore)
+	logrus.Infof("INFO: just want output MetadataStore!!! :%+v", i.distributionMetadataStore)
+	logrus.Infof("INFO: before pull=============================================!!! ")
 
-	err = distribution.Pull(ctx, ref, imagePullConfig, cs)
+	err = distribution.Pull(ctx, ref, imagePullConfig, cs) //从此处开始拉取
 	close(progressChan)
 	<-writesDone
 	return err

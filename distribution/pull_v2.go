@@ -69,6 +69,7 @@ type v2Puller struct {
 
 func (p *v2Puller) Pull(ctx context.Context, ref reference.Named, platform *specs.Platform) (err error) {
 	// TODO(tiborvass): was ReceiveTimeout
+	logrus.Infof("INFO: 我在V2PULL里了！！！！ ")
 	p.repo, p.confirmedV2, err = NewV2Repository(ctx, p.repoInfo, p.endpoint, p.config.MetaHeaders, p.config.AuthConfig, "pull")
 	if err != nil {
 		logrus.Warnf("Error getting v2 registry: %v", err)
@@ -80,6 +81,7 @@ func (p *v2Puller) Pull(ctx context.Context, ref reference.Named, platform *spec
 		return err
 	}
 
+	logrus.Infof("INFO: 执行pullV2Repository函数前前前前前前前前前")
 	if err = p.pullV2Repository(ctx, ref, platform); err != nil {
 		if _, ok := err.(fallbackError); ok {
 			return err
@@ -92,17 +94,20 @@ func (p *v2Puller) Pull(ctx context.Context, ref reference.Named, platform *spec
 			}
 		}
 	}
+	logrus.Infof("INFO: 执行pullV2Repository函数后后后后后后后后")
 	return err
 }
 
 func (p *v2Puller) pullV2Repository(ctx context.Context, ref reference.Named, platform *specs.Platform) (err error) {
 	var layersDownloaded bool
 	if !reference.IsNameOnly(ref) {
+		logrus.Infof("INFO: pullV2Repository第一个if？")
 		layersDownloaded, err = p.pullV2Tag(ctx, ref, platform)
 		if err != nil {
 			return err
 		}
 	} else {
+		logrus.Infof("INFO: pullV2Repository第二个if？")
 		tags, err := p.repo.Tags(ctx).All(ctx)
 		if err != nil {
 			// If this repository doesn't exist on V2, we should
