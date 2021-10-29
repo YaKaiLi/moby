@@ -620,6 +620,7 @@ func (ld *layerDescriptor) DiffID() (layer.DiffID, error) {
 }
 
 func (ld *layerDescriptor) Download(ctx context.Context, progressOutput pkgprogress.Output) (io.ReadCloser, int64, error) {
+	logrus.Infof("[download function] in pull.go")
 	rc, err := ld.fetcher.Fetch(ctx, ld.desc)
 	if err != nil {
 		return nil, 0, err

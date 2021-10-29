@@ -174,6 +174,8 @@ func (ld *v2LayerDescriptor) DiffID() (layer.DiffID, error) {
 
 func (ld *v2LayerDescriptor) Download(ctx context.Context, progressOutput progress.Output) (io.ReadCloser, int64, error) {
 	logrus.Debugf("pulling blob %q", ld.digest)
+	logrus.Infof("[pullv2.go download function] in pullv2.go")
+	logrus.Infof("[pullv2.go download function] pulling blob %q", ld.digest)
 
 	var (
 		err    error
@@ -265,6 +267,8 @@ func (ld *v2LayerDescriptor) Download(ctx context.Context, progressOutput progre
 
 	progress.Update(progressOutput, ld.ID(), "Verifying Checksum")
 
+	logrus.Infof("[pullv2.go download function]filesystem layer verification failed for digest %s", ld.digest)
+
 	if !ld.verifier.Verified() {
 		err = fmt.Errorf("filesystem layer verification failed for digest %s", ld.digest)
 		logrus.Error(err)
@@ -284,6 +288,7 @@ func (ld *v2LayerDescriptor) Download(ctx context.Context, progressOutput progre
 	progress.Update(progressOutput, ld.ID(), "Download complete")
 
 	logrus.Debugf("Downloaded %s to tempfile %s", ld.ID(), tmpFile.Name())
+	logrus.Infof("[pullv2.go download function] Downloaded %s to tempfile %s", ld.ID(), tmpFile.Name())
 
 	_, err = tmpFile.Seek(0, io.SeekStart)
 	if err != nil {
@@ -342,7 +347,7 @@ func (ld *v2LayerDescriptor) Registered(diffID layer.DiffID) {
 }
 
 func (p *v2Puller) pullV2Tag(ctx context.Context, ref reference.Named, platform *specs.Platform) (tagUpdated bool, err error) {
-
+	logrus.Infof("[pullV2Tag]: 进入pullV2Tag函数内")
 	var (
 		tagOrDigest string // Used for logging/progress only
 		dgst        digest.Digest
@@ -457,22 +462,26 @@ func (p *v2Puller) pullV2Tag(ctx context.Context, ref reference.Named, platform 
 			logrus.Warn(msg)
 			progress.Message(p.config.ProgressOutput, "", msg)
 		}
+		logrus.Infof("[pullV2Tag]: pullSchema1")
 
 		id, manifestDigest, err = p.pullSchema1(ctx, ref, v, platform)
 		if err != nil {
 			return false, err
 		}
 	case *schema2.DeserializedManifest:
+		logrus.Infof("[pullV2Tag]: pullSchema2")
 		id, manifestDigest, err = p.pullSchema2(ctx, ref, v, platform)
 		if err != nil {
 			return false, err
 		}
 	case *ocischema.DeserializedManifest:
+		logrus.Infof("[pullV2Tag]: pullOCI")
 		id, manifestDigest, err = p.pullOCI(ctx, ref, v, platform)
 		if err != nil {
 			return false, err
 		}
 	case *manifestlist.DeserializedManifestList:
+		logrus.Infof("[pullV2Tag]: pullManifestList")
 		id, manifestDigest, err = p.pullManifestList(ctx, ref, v, platform)
 		if err != nil {
 			return false, err
@@ -480,8 +489,9 @@ func (p *v2Puller) pullV2Tag(ctx context.Context, ref reference.Named, platform 
 	default:
 		return false, invalidManifestFormatError{}
 	}
+	logrus.Infof("[pullV2Tag]: pull完成，Digest为%s", manifestDigest.String())
 
-	progress.Message(p.config.ProgressOutput, "", "Digest: "+manifestDigest.String())
+	progress.Message(p.config.ProgressOutput, "", "Digest: "+manifestDigest.String()) //这一块输出pull之后的Digest
 
 	if p.config.ReferenceStore != nil {
 		oldTagID, err := p.config.ReferenceStore.Get(ref)
@@ -623,9 +633,11 @@ func (p *v2Puller) pullSchema1(ctx context.Context, ref reference.Reference, unv
 }
 
 func (p *v2Puller) pullSchema2Layers(ctx context.Context, target distribution.Descriptor, layers []distribution.Descriptor, platform *specs.Platform) (id digest.Digest, err error) {
+	logrus.Infof("[pullSchema2Layers]:进入pullSchema2Layers函数")
 	if _, err := p.config.ImageStore.Get(ctx, target.Digest); err == nil {
 		// If the image already exists locally, no need to pull
 		// anything.
+		logrus.Infof("[pullSchema2Layers]:啊哦，原来这个镜像早就拉下来了")
 		return target.Digest, nil
 	}
 
@@ -782,8 +794,10 @@ func (p *v2Puller) pullSchema2Layers(ctx context.Context, target distribution.De
 			}
 		}
 	}
+	logrus.Infof("[pullSchema2Layers] configJSON是什么a: %s", configJSON)
 
 	imageID, err := p.config.ImageStore.Put(ctx, configJSON)
+	//ImageID从这找到的！！
 	if err != nil {
 		return "", err
 	}
@@ -832,6 +846,8 @@ func receiveConfig(s ImageConfigStore, configChan <-chan []byte, errChan <-chan 
 // platform-specific manifests.
 func (p *v2Puller) pullManifestList(ctx context.Context, ref reference.Named, mfstList *manifestlist.DeserializedManifestList, pp *specs.Platform) (id digest.Digest, manifestListDigest digest.Digest, err error) {
 	manifestListDigest, err = schema2ManifestDigest(ref, mfstList)
+	// schema2ManifestDigest computes the manifest digest, and, if pulling by
+	// digest, ensures that it matches the requested digest.
 	if err != nil {
 		return "", "", err
 	}
@@ -841,6 +857,7 @@ func (p *v2Puller) pullManifestList(ctx context.Context, ref reference.Named, mf
 		platform = *pp
 	}
 	logrus.Debugf("%s resolved to a manifestList object with %d entries; looking for a %s/%s match", ref, len(mfstList.Manifests), platforms.Format(platform), runtime.GOARCH)
+	logrus.Infof("[pullManifestList]:%s resolved to a manifestList object with %d entries; looking for a %s/%s match", ref, len(mfstList.Manifests), platforms.Format(platform), runtime.GOARCH)
 
 	manifestMatches := filterManifests(mfstList.Manifests, platform)
 
@@ -876,6 +893,7 @@ func (p *v2Puller) pullManifestList(ctx context.Context, ref reference.Named, mf
 
 	switch v := manifest.(type) {
 	case *schema1.SignedManifest:
+		logrus.Infof("[pullManifestList]:schema1.SignedManifest")
 		msg := fmt.Sprintf("[DEPRECATION NOTICE] v2 schema1 manifests in manifest lists are not supported and will break in a future release. Suggest author of %s to upgrade to v2 schema2. More information at https://docs.docker.com/registry/spec/deprecated-schema-v1/", ref)
 		logrus.Warn(msg)
 		progress.Message(p.config.ProgressOutput, "", msg)
@@ -886,12 +904,14 @@ func (p *v2Puller) pullManifestList(ctx context.Context, ref reference.Named, mf
 			return "", "", err
 		}
 	case *schema2.DeserializedManifest:
+		logrus.Infof("[pullManifestList]:schema2.DeserializedManifest") //会进这个
 		platform := toOCIPlatform(manifestMatches[0].Platform)
 		id, _, err = p.pullSchema2(ctx, manifestRef, v, &platform)
 		if err != nil {
 			return "", "", err
 		}
 	case *ocischema.DeserializedManifest:
+		logrus.Infof("[pullManifestList]:ocischema.DeserializedManifest")
 		platform := toOCIPlatform(manifestMatches[0].Platform)
 		id, _, err = p.pullOCI(ctx, manifestRef, v, &platform)
 		if err != nil {
@@ -935,6 +955,7 @@ func schema2ManifestDigest(ref reference.Named, mfst distribution.Manifest) (dig
 
 	// If pull by digest, then verify the manifest digest.
 	if digested, isDigested := ref.(reference.Canonical); isDigested {
+		logrus.Infof("I want to manifest verification: %s", digested.Digest())
 		verifier := digested.Digest().Verifier()
 		if _, err := verifier.Write(canonical); err != nil {
 			return "", err

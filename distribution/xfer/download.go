@@ -107,6 +107,7 @@ type DownloadDescriptorWithRegistered interface {
 // registered in the appropriate order.  The caller must call the returned
 // release function once it is done with the returned RootFS object.
 func (ldm *LayerDownloadManager) Download(ctx context.Context, initialRootFS image.RootFS, os string, layers []DownloadDescriptor, progressOutput progress.Output) (image.RootFS, func(), error) {
+	logrus.Infof("[download function] in download.go")
 	var (
 		topLayer       layer.Layer
 		topDownload    *downloadTransfer

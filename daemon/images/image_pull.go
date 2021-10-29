@@ -54,7 +54,7 @@ func (i *ImageService) PullImage(ctx context.Context, image, tag string, platfor
 	}
 	// logrus.Infof("INFO: over digest the tag")
 
-	err = i.pullImageWithReference(ctx, ref, platform, metaHeaders, authConfig, outStream)
+	err = i.pullImageWithReference(ctx, ref, platform, metaHeaders, authConfig, outStream) //拉取镜像主要在这个函数中。
 	imageActions.WithValues("pull").UpdateSince(start)
 	if err != nil {
 		return err
