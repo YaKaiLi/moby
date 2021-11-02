@@ -428,6 +428,7 @@ func (ld *layerDescriptor) DiffID() (layer.DiffID, error) {
 }
 
 func (ld *layerDescriptor) Download(ctx context.Context, progressOutput pkgprogress.Output) (io.ReadCloser, int64, error) {
+	logrus.Infof("[download function] in worker.go")
 	done := oneOffProgress(ld.pctx, fmt.Sprintf("pulling %s", ld.desc.Digest))
 
 	// TODO should this write output to progressOutput? Or use something similar to loggerFromContext()? see https://github.com/moby/buildkit/commit/aa29e7729464f3c2a773e27795e584023c751cb8
