@@ -1,2 +1,3 @@
 #! /bin/bash
-docker pull alpine
+docker rmi nginx
+docker pull nginx
