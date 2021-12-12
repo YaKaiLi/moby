@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"unsafe"
 
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/platforms"
@@ -37,6 +38,7 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"github.com/tidwall/gjson"
 )
 
 var (
@@ -795,6 +797,24 @@ func (p *v2Puller) pullSchema2Layers(ctx context.Context, target distribution.De
 		}
 	}
 	logrus.Infof("[pullSchema2Layers] configJSON是什么a: %s", configJSON)
+
+	//获取diffID
+	var DiffidListString string
+	stringConfigJSON := *(*string)(unsafe.Pointer(&configJSON))
+	rootfsDiff_ids := gjson.Get(stringConfigJSON, "rootfs.diff_ids")
+	for i := 0; i < len(rootfsDiff_ids.Array()); i++ {
+		if i != len(rootfsDiff_ids.Array())-1 {
+			DiffidListString = DiffidListString + rootfsDiff_ids.Array()[i].String() + ","
+		} else {
+			DiffidListString = DiffidListString + rootfsDiff_ids.Array()[i].String()
+		}
+	}
+	uintptrDiffidListString := (uintptr)(unsafe.Pointer(&DiffidListString))
+	DiffidListStringLen := len(DiffidListString)
+	uintptrDiffidListStringLen := (uintptr)(unsafe.Pointer(&DiffidListStringLen))
+
+	logrus.Infof("[pullSchema2Layers] uintptrDiffidListString: ", uintptrDiffidListString)
+	logrus.Infof("[pullSchema2Layers] uintptrDiffidListStringLen: ", uintptrDiffidListStringLen)
 
 	imageID, err := p.config.ImageStore.Put(ctx, configJSON)
 	//ImageID从这找到的！！
