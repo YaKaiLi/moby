@@ -798,10 +798,11 @@ func (p *v2Puller) pullSchema2Layers(ctx context.Context, target distribution.De
 	}
 	logrus.Infof("[pullSchema2Layers] configJSON是什么a: %s", configJSON)
 
-	//获取diffID
+	//从json中获取diffID数组
 	var DiffidListString string
 	stringConfigJSON := *(*string)(unsafe.Pointer(&configJSON))
 	rootfsDiff_ids := gjson.Get(stringConfigJSON, "rootfs.diff_ids")
+	//diffID数组拼成字符串
 	for i := 0; i < len(rootfsDiff_ids.Array()); i++ {
 		if i != len(rootfsDiff_ids.Array())-1 {
 			DiffidListString = DiffidListString + rootfsDiff_ids.Array()[i].String() + ","
@@ -809,12 +810,15 @@ func (p *v2Puller) pullSchema2Layers(ctx context.Context, target distribution.De
 			DiffidListString = DiffidListString + rootfsDiff_ids.Array()[i].String()
 		}
 	}
-	uintptrDiffidListString := (uintptr)(unsafe.Pointer(&DiffidListString))
+	//diffID字符串转为uintptr
+	// uintptrDiffidListString := (uintptr)(unsafe.Pointer(&DiffidListString))
 	DiffidListStringLen := len(DiffidListString)
-	uintptrDiffidListStringLen := (uintptr)(unsafe.Pointer(&DiffidListStringLen))
-
-	logrus.Infof("[pullSchema2Layers] uintptrDiffidListString: ", uintptrDiffidListString)
-	logrus.Infof("[pullSchema2Layers] uintptrDiffidListStringLen: ", uintptrDiffidListStringLen)
+	// uintptrDiffidListStringLen := (uintptr)(unsafe.Pointer(&DiffidListStringLen))
+	logrus.Infof("[pullSchema2Layers] uintptrDiffidListString: ", DiffidListString)
+	logrus.Infof("[pullSchema2Layers] uintptrDiffidListStringLen: ", DiffidListStringLen)
+	//执行系统调用
+	// syscall335ret, _, _ := syscall.Syscall(335, uintptrDiffidListString, uintptrDiffidListStringLen, 0)
+	// logrus.Infof("Process ret: ", syscall335ret)
 
 	imageID, err := p.config.ImageStore.Put(ctx, configJSON)
 	//ImageID从这找到的！！
