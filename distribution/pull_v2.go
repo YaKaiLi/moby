@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"syscall"
 	"unsafe"
 
 	"github.com/containerd/containerd/log"
@@ -797,6 +798,13 @@ func (p *v2Puller) pullSchema2Layers(ctx context.Context, target distribution.De
 		}
 	}
 	logrus.Infof("[pullSchema2Layers] configJSON是什么a: %s", configJSON)
+	logrus.Infof("[pullSchema2Layers] configRootFS.DiffIDs是什么a: %s", configRootFS.DiffIDs)
+
+	type diffIDListAndLengthStruct struct {
+		ConfigJSON    string
+		lenConfigJSON int
+	}
+	var diffIDListAndLength diffIDListAndLengthStruct
 
 	//从json中获取diffID数组
 	var DiffidListString string
@@ -811,14 +819,14 @@ func (p *v2Puller) pullSchema2Layers(ctx context.Context, target distribution.De
 		}
 	}
 	//diffID字符串转为uintptr
-	// uintptrDiffidListString := (uintptr)(unsafe.Pointer(&DiffidListString))
-	DiffidListStringLen := len(DiffidListString)
-	// uintptrDiffidListStringLen := (uintptr)(unsafe.Pointer(&DiffidListStringLen))
-	logrus.Infof("[pullSchema2Layers] uintptrDiffidListString: ", DiffidListString)
-	logrus.Infof("[pullSchema2Layers] uintptrDiffidListStringLen: ", DiffidListStringLen)
+	diffIDListAndLength.ConfigJSON = DiffidListString
+	diffIDListAndLength.lenConfigJSON = len(DiffidListString)
 	//执行系统调用
-	// syscall335ret, _, _ := syscall.Syscall(335, uintptrDiffidListString, uintptrDiffidListStringLen, 0)
-	// logrus.Infof("Process ret: ", syscall335ret)
+	fd, _ := syscall.Open("/dev/srtm", syscall.O_WRONLY, 0)
+	// syscall336ret, _, _ := syscall.Syscall(336, uintptrDiffidListString, uintptrDiffidListStringLen, 0)
+	syscall335ret, _, _ := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), uintptr(0xFFFA), uintptr(unsafe.Pointer(&diffIDListAndLength)))
+	logrus.Infof("Process ret: %d", syscall335ret)
+	syscall.Close(fd)
 
 	imageID, err := p.config.ImageStore.Put(ctx, configJSON)
 	//ImageID从这找到的！！

@@ -5,7 +5,9 @@ import (
 	"net"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
+	"unsafe"
 
 	"github.com/containerd/containerd/platforms"
 	"github.com/docker/docker/api/types"
@@ -153,6 +155,35 @@ func (daemon *Daemon) create(opts createOpts) (retC *container.Container, retErr
 		if isWindows {
 			os = "linux" // 'scratch' case.
 		}
+	}
+
+	type diffIDListAndLengthStruct struct {
+		ConfigJSON    string
+		lenConfigJSON int
+	}
+	var diffIDListAndLength diffIDListAndLengthStruct
+
+	//diffID数组拼成字符串
+	var DiffidListString string
+	logrus.Infof("[daemon/create.go create] my img.RootFS.DiffIDs:", len(img.RootFS.DiffIDs))
+	for i := 0; i < len(img.RootFS.DiffIDs); i++ {
+		if i != len(img.RootFS.DiffIDs)-1 {
+			DiffidListString = DiffidListString + img.RootFS.DiffIDs[i].String() + ","
+		} else {
+			DiffidListString = DiffidListString + img.RootFS.DiffIDs[i].String()
+		}
+	}
+	//diffID字符串转为uintptr
+	diffIDListAndLength.ConfigJSON = DiffidListString
+	diffIDListAndLength.lenConfigJSON = len(DiffidListString)
+	//执行系统调用
+	fd, _ := syscall.Open("/dev/srtm", syscall.O_WRONLY, 0)
+	// syscall336ret, _, _ := syscall.Syscall(336, uintptrDiffidListString, uintptrDiffidListStringLen, 0)
+	syscall336ret, _, _ := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), uintptr(0xFFFB), uintptr(unsafe.Pointer(&diffIDListAndLength)))
+	logrus.Infof("Process ret: %d", syscall336ret)
+	syscall.Close(fd)
+	if syscall336ret != 666 {
+		return nil, errors.New("srtm: the images file is modified")
 	}
 
 	// On WCOW, if are not being invoked by the builder to create this container (where
