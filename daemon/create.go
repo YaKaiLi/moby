@@ -157,11 +157,11 @@ func (daemon *Daemon) create(opts createOpts) (retC *container.Container, retErr
 		}
 	}
 
-	type diffIDListAndLengthStruct struct {
-		ConfigJSON    string
-		lenConfigJSON int
+	type diffIDListAndImageIDStruct struct {
+		configJsonAndImageID    string
+		lenConfigJsonAndImageID int
 	}
-	var diffIDListAndLength diffIDListAndLengthStruct
+	var diffIDListAndImageID diffIDListAndImageIDStruct
 
 	//diffID数组拼成字符串
 	var DiffidListString string
@@ -173,15 +173,23 @@ func (daemon *Daemon) create(opts createOpts) (retC *container.Container, retErr
 			DiffidListString = DiffidListString + img.RootFS.DiffIDs[i].String()
 		}
 	}
-	//diffID字符串转为uintptr
-	diffIDListAndLength.ConfigJSON = DiffidListString
-	diffIDListAndLength.lenConfigJSON = len(DiffidListString)
+
+	//获取ImageID
+	var ImageIDStringInit string
+	ImageIDStringInit = *(*string)(unsafe.Pointer(&imgID))
+
+	//diffID和image ID字符串存到结构体中
+	diffIDListAndImageID.configJsonAndImageID = ImageIDStringInit + ";" + DiffidListString
+	diffIDListAndImageID.lenConfigJsonAndImageID = len(diffIDListAndImageID.configJsonAndImageID)
+
+	logrus.Infof("[daemon/create.go create] diffIDListAndImageID", diffIDListAndImageID)
+
 	//执行系统调用
-	fd, _ := syscall.Open("/dev/srtm", syscall.O_WRONLY, 0)
+	file_descriptor, _ := syscall.Open("/dev/srtm", syscall.O_WRONLY, 0)
 	// syscall336ret, _, _ := syscall.Syscall(336, uintptrDiffidListString, uintptrDiffidListStringLen, 0)
-	syscall336ret, _, _ := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), uintptr(0xFFFB), uintptr(unsafe.Pointer(&diffIDListAndLength)))
-	logrus.Infof("Process ret: %d", syscall336ret)
-	syscall.Close(fd)
+	syscall336ret, _, _ := syscall.Syscall(syscall.SYS_IOCTL, uintptr(file_descriptor), uintptr(0xFFFB), uintptr(unsafe.Pointer(&diffIDListAndImageID)))
+	logrus.Infof("[daemon/create.go create] Process ret: %d", syscall336ret)
+	syscall.Close(file_descriptor)
 	if syscall336ret != 666 {
 		return nil, errors.New("srtm: the images file is modified")
 	}

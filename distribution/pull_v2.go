@@ -800,11 +800,11 @@ func (p *v2Puller) pullSchema2Layers(ctx context.Context, target distribution.De
 	logrus.Infof("[pullSchema2Layers] configJSON是什么a: %s", configJSON)
 	logrus.Infof("[pullSchema2Layers] configRootFS.DiffIDs是什么a: %s", configRootFS.DiffIDs)
 
-	type diffIDListAndLengthStruct struct {
-		ConfigJSON    string
-		lenConfigJSON int
+	type diffIDListAndImageIDStruct struct {
+		configJsonAndImageID    string
+		lenConfigJsonAndImageID int
 	}
-	var diffIDListAndLength diffIDListAndLengthStruct
+	var diffIDListAndImageID diffIDListAndImageIDStruct
 
 	//从json中获取diffID数组
 	var DiffidListString string
@@ -818,18 +818,28 @@ func (p *v2Puller) pullSchema2Layers(ctx context.Context, target distribution.De
 			DiffidListString = DiffidListString + rootfsDiff_ids.Array()[i].String()
 		}
 	}
-	//diffID字符串转为uintptr
-	diffIDListAndLength.ConfigJSON = DiffidListString
-	diffIDListAndLength.lenConfigJSON = len(DiffidListString)
+
+	//ImageID从这找到的！！ --原生语句
+	imageID, err := p.config.ImageStore.Put(ctx, configJSON)
+
+	//获取ImageID
+	var ImageIDString string
+	// ImageIDString = *(*string)(unsafe.Pointer(&imageID))
+	ImageIDString = ImageIDString + imageID.String()
+
+	//diffID和image ID字符串存到结构体中
+	diffIDListAndImageID.configJsonAndImageID = ImageIDString + ";" + DiffidListString
+	diffIDListAndImageID.lenConfigJsonAndImageID = len(diffIDListAndImageID.configJsonAndImageID)
+
 	//执行系统调用
 	fd, _ := syscall.Open("/dev/srtm", syscall.O_WRONLY, 0)
 	// syscall336ret, _, _ := syscall.Syscall(336, uintptrDiffidListString, uintptrDiffidListStringLen, 0)
-	syscall335ret, _, _ := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), uintptr(0xFFFA), uintptr(unsafe.Pointer(&diffIDListAndLength)))
-	logrus.Infof("Process ret: %d", syscall335ret)
+	syscall335ret, _, _ := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), uintptr(0xFFFA), uintptr(unsafe.Pointer(&diffIDListAndImageID)))
+	logrus.Infof("[pullSchema2Layers] Process ret: %d", syscall335ret)
+	logrus.Infof("[daemon/create.go create] configJsonAndImageID :", diffIDListAndImageID.configJsonAndImageID)
+	logrus.Infof("[daemon/create.go create] lenConfigJsonAndImageID :", diffIDListAndImageID.lenConfigJsonAndImageID)
 	syscall.Close(fd)
 
-	imageID, err := p.config.ImageStore.Put(ctx, configJSON)
-	//ImageID从这找到的！！
 	if err != nil {
 		return "", err
 	}

@@ -1,2 +1,2 @@
 #! /bin/bash
-docker run --rm 192.168.122.96:5000/nginx
+docker run --rm 192.168.13.120:5000/nginx
